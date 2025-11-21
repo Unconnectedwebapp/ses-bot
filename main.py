@@ -6,10 +6,10 @@ from flask import Flask
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-# YENİ TOKENİNİ TIRNAK İÇİNE YAZ
+# --- TOKENINI BURAYA YAPIŞTIR ---
 TOKEN = "8090764217:AAHeGwTajkYyux_9uzsxFzGuqW1qwQ1XuEo" 
 
-# --- RENDER AYAKTA TUTMA KODU ---
+# --- RENDER İÇİN WEB SUNUCUSU ---
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -20,7 +20,7 @@ def run_web():
     port = int(os.environ.get("PORT", 8080))
     app_web.run(host="0.0.0.0", port=port)
 
-# --- BOT KODLARI ---
+# --- BOT İŞLEMLERİ ---
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = update.message.audio or update.message.voice or update.message.video or update.message.document
     if not file: return
@@ -34,9 +34,15 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await tg_file.download_to_drive(input_path)
         subprocess.run(["ffmpeg", "-y", "-i", input_path, "-c:a", "libopus", "-b:a", "64k", "-ar", "48000", "-ac", "1", output_path], check=True)
-        with open(output_path, "rb") as f: await update.message.reply_voice(f)
+        
+        # Ses dosyasını gönder
+        with open(output_path, "rb") as f: 
+            await update.message.reply_voice(f)
+
     except Exception as e:
-        await update.message.reply_text(f"Hata: {e}")
+        # BURASI DEĞİŞTİ: Artık hata mesajını sana göndermeyecek, sadece loglara yazacak.
+        print(f"Gizli Hata: {e}") 
+        
     finally:
         if os.path.exists(input_path): os.remove(input_path)
         if os.path.exists(output_path): os.remove(output_path)
@@ -46,4 +52,3 @@ if __name__ == "__main__":
     app = Application.builder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.AUDIO | filters.VOICE | filters.VIDEO | filters.Document.ALL, handle_audio))
     app.run_polling()
-    
